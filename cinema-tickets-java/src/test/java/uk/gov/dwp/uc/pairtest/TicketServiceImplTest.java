@@ -16,7 +16,7 @@ import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.verify;
 
@@ -24,9 +24,6 @@ import static org.mockito.Mockito.verify;
 class TicketServiceImplTest {
 
     private static final long ACCOUNT_ID = 1L;
-
-    //TODO display names?
-    // assertJ Assertions
 
     @Mock
     private TicketPaymentService ticketPaymentService;
@@ -42,8 +39,8 @@ class TicketServiceImplTest {
     void invalidAccountId_throwsInvalidPurchaseException(Long invalidAccountId) {
         TicketTypeRequest request = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(invalidAccountId, request));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(invalidAccountId, request))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     static Stream<Long> invalidAccountIds() {
@@ -55,8 +52,27 @@ class TicketServiceImplTest {
     void noTicketsRequested_throwsInvalidPurchaseException(TicketTypeRequest.Type type) {
         TicketTypeRequest request = new TicketTypeRequest(type, 0);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, request));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request))
+                .isInstanceOf(InvalidPurchaseException.class);
+    }
+
+    @ParameterizedTest
+    @EnumSource(TicketTypeRequest.Type.class)
+    void negativeTicketsRequested_throwsInvalidPurchaseException(TicketTypeRequest.Type type) {
+        TicketTypeRequest request = new TicketTypeRequest(type, -1);
+
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request))
+                .isInstanceOf(InvalidPurchaseException.class);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = TicketTypeRequest.Type.class, names = {"INFANT", "CHILD"})
+    void negativeTicketsWithPositiveAdultTicketsRequested_throwsInvalidPurchaseException(TicketTypeRequest.Type type) {
+        TicketTypeRequest request = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
+        TicketTypeRequest negative = new TicketTypeRequest(type, -1);
+
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request, negative))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test
@@ -65,8 +81,8 @@ class TicketServiceImplTest {
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 0);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 0);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test
@@ -74,8 +90,8 @@ class TicketServiceImplTest {
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, childRequest, infantRequest));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, childRequest, infantRequest))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test
@@ -84,8 +100,8 @@ class TicketServiceImplTest {
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test
@@ -93,12 +109,12 @@ class TicketServiceImplTest {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 3);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, infantRequest));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, infantRequest))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test
-    void adultRequestsWithNoChildAndInfantRequested_throwsInvalidPurchaseException() {
+    void adultRequestsWithNoChildAndInfantRequested_validRequest() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 0);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 0);
@@ -110,8 +126,8 @@ class TicketServiceImplTest {
     void moreThat25AdultTicketsRequest_throwsInvalidPurchaseException() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 26);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test
@@ -120,8 +136,8 @@ class TicketServiceImplTest {
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 10);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 6);
 
-        assertThrows(InvalidPurchaseException.class,
-                () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest));
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
+                .isInstanceOf(InvalidPurchaseException.class);
     }
 
     @Test

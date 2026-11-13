@@ -47,7 +47,7 @@ public class TicketServiceImpl implements TicketService {
     private static TicketCount getTicketCounts(TicketTypeRequest[] ticketTypeRequests) {
         Map<TicketTypeRequest.Type, Integer> totals = new EnumMap<>(TicketTypeRequest.Type.class);
         for (TicketTypeRequest request : ticketTypeRequests) {
-            totals.merge(request.getTicketType(), request.getNoOfTickets(), Integer::sum);
+            totals.merge(request.type(), request.noOfTickets(), Integer::sum);
         }
 
         return new TicketCount(totals);
@@ -56,6 +56,8 @@ public class TicketServiceImpl implements TicketService {
     private void validateTicketsRequested(TicketCount ticketCount) {
         int totalTickets = ticketCount.getAdults() + ticketCount.getChildren() + ticketCount.getInfants();
         if (ticketCount.getAdults() < 1
+            || ticketCount.getChildren() < 0
+            || ticketCount.getInfants() < 0
             || totalTickets > MAX_TICKETS
             || ticketCount.getAdults() < ticketCount.getInfants()) {
             throw new InvalidPurchaseException();
@@ -79,21 +81,21 @@ public class TicketServiceImpl implements TicketService {
         private final int children;
         private final int infants;
 
-        public TicketCount(Map<TicketTypeRequest.Type, Integer> totals) {
+        TicketCount(Map<TicketTypeRequest.Type, Integer> totals) {
             this.adults = totals.getOrDefault(TicketTypeRequest.Type.ADULT, 0);
             this.children = totals.getOrDefault(TicketTypeRequest.Type.CHILD, 0);
             this.infants = totals.getOrDefault(TicketTypeRequest.Type.INFANT, 0);
         }
 
-        public int getAdults() {
+        int getAdults() {
             return adults;
         }
 
-        public int getChildren() {
+        int getChildren() {
             return children;
         }
 
-        public int getInfants() {
+        int getInfants() {
             return infants;
         }
     }
