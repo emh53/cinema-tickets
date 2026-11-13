@@ -89,6 +89,16 @@ class TicketServiceImplTest {
     }
 
     @Test
+    void moreInfantsThanAdultsAvailableShareSeats_throwsInvalidPurchaseException() {
+        TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
+        TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 3);
+
+        assertThrows(InvalidPurchaseException.class,
+                () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, infantRequest));
+
+    }
+
+    @Test
     void adultRequestsWithNoChildAndInfantRequested_throwsInvalidPurchaseException() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 0);
@@ -144,7 +154,7 @@ class TicketServiceImplTest {
                 Arguments.of(1, 1, 0, 40),
                 Arguments.of(1, 5, 0, 100),
                 Arguments.of(1, 0, 1, 25),
-                Arguments.of(1, 0, 5, 25),
+                Arguments.of(5, 0, 5, 125),
                 Arguments.of(10, 10, 5, 400)
         );
     }
@@ -178,7 +188,7 @@ class TicketServiceImplTest {
                 Arguments.of(1, 1, 0, 2),
                 Arguments.of(1, 5, 0, 6),
                 Arguments.of(1, 0, 1, 1),
-                Arguments.of(1, 0, 5, 1),
+                Arguments.of(5, 0, 5, 5),
                 Arguments.of(10, 10, 5, 20)
         );
     }

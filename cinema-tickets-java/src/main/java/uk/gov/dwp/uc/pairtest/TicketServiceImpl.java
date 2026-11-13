@@ -5,10 +5,14 @@ import thirdparty.seatbooking.SeatReservationService;
 import uk.gov.dwp.uc.pairtest.domain.TicketTypeRequest;
 import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 public class TicketServiceImpl implements TicketService {
 
     private static final int CHILD_PRICE = 15;
     private static final int ADULT_PRICE = 25;
+    private static final int MAX_TICKETS = 25;
 
     private final TicketPaymentService ticketPaymentService;
     private final SeatReservationService seatReservationService;
@@ -26,10 +30,12 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public void purchaseTickets(Long accountId, TicketTypeRequest... ticketTypeRequests) throws InvalidPurchaseException {
         validateAccountId(accountId);
-        validateTicketTypeRequest(ticketTypeRequests);
 
-        makePaymentRequest(accountId, ticketTypeRequests);
-        allocateSeats(accountId, ticketTypeRequests);
+        TicketCount ticketCount = getTicketCounts(ticketTypeRequests);
+        validateTicketsRequested(ticketCount);
+
+        makePaymentRequest(accountId, ticketCount);
+        allocateSeats(accountId, ticketCount);
     }
 
     private void validateAccountId(Long accountId) {
@@ -38,54 +44,57 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private void validateTicketTypeRequest(TicketTypeRequest[] ticketTypeRequests) {
-        boolean adultRequested = false;
-        int ticketTotal = 0;
-
+    private static TicketCount getTicketCounts(TicketTypeRequest[] ticketTypeRequests) {
+        Map<TicketTypeRequest.Type, Integer> totals = new EnumMap<>(TicketTypeRequest.Type.class);
         for (TicketTypeRequest request : ticketTypeRequests) {
-            ticketTotal += request.getNoOfTickets();
-            if (TicketTypeRequest.Type.ADULT.equals(request.getTicketType()) && request.getNoOfTickets() > 0) {
-                adultRequested = true;
-            }
+            totals.merge(request.getTicketType(), request.getNoOfTickets(), Integer::sum);
         }
 
-        if (!adultRequested || ticketTotal > 25) {
+        return new TicketCount(totals);
+    }
+
+    private void validateTicketsRequested(TicketCount ticketCount) {
+        int totalTickets = ticketCount.getAdults() + ticketCount.getChildren() + ticketCount.getInfants();
+        if (ticketCount.getAdults() < 1
+            || totalTickets > MAX_TICKETS
+            || ticketCount.getAdults() < ticketCount.getInfants()) {
             throw new InvalidPurchaseException();
         }
     }
 
-    private void makePaymentRequest(long accountId, TicketTypeRequest[] ticketTypeRequests) {
-        int adultTickets = 0;
-        int childTickets = 0;
-
-        for (TicketTypeRequest request : ticketTypeRequests) {
-            switch (request.getTicketType()) {
-                case ADULT -> adultTickets += request.getNoOfTickets();
-                case CHILD -> childTickets += request.getNoOfTickets();
-                case null, default -> {
-                }
-            }
-        }
-
-        int adultTotal = adultTickets * ADULT_PRICE;
-        int childTotal = childTickets * CHILD_PRICE;
+    private void makePaymentRequest(long accountId, TicketCount ticketCount) {
+        int adultTotal = ticketCount.getAdults() * ADULT_PRICE;
+        int childTotal = ticketCount.getChildren() * CHILD_PRICE;
         int totalAmountToPay = adultTotal + childTotal;
         ticketPaymentService.makePayment(accountId, totalAmountToPay);
     }
 
-    private void allocateSeats(long accountId, TicketTypeRequest[] ticketTypeRequests) {
-        int adultTickets = 0;
-        int childTickets = 0;
+    private void allocateSeats(long accountId, TicketCount ticketCount) {
+        int totalSeatsToAllocate = ticketCount.getAdults() + ticketCount.getChildren();
+        seatReservationService.reserveSeat(accountId, totalSeatsToAllocate);
+    }
 
-        for (TicketTypeRequest request : ticketTypeRequests) {
-            switch (request.getTicketType()) {
-                case ADULT -> adultTickets += request.getNoOfTickets();
-                case CHILD -> childTickets += request.getNoOfTickets();
-                case null, default -> {
-                }
-            }
+    private static class TicketCount {
+        private final int adults;
+        private final int children;
+        private final int infants;
+
+        public TicketCount(Map<TicketTypeRequest.Type, Integer> totals) {
+            this.adults = totals.getOrDefault(TicketTypeRequest.Type.ADULT, 0);
+            this.children = totals.getOrDefault(TicketTypeRequest.Type.CHILD, 0);
+            this.infants = totals.getOrDefault(TicketTypeRequest.Type.INFANT, 0);
         }
 
-        seatReservationService.reserveSeat(accountId, adultTickets + childTickets);
+        public int getAdults() {
+            return adults;
+        }
+
+        public int getChildren() {
+            return children;
+        }
+
+        public int getInfants() {
+            return infants;
+        }
     }
 }
