@@ -89,13 +89,12 @@ class TicketServiceImplTest {
     }
 
     @Test
-    void moreInfantsThanAdultsAvailableShareSeats_throwsInvalidPurchaseException() {
+    void moreInfantsThanAdultsAvailableToShareSeats_throwsInvalidPurchaseException() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 2);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 3);
 
         assertThrows(InvalidPurchaseException.class,
                 () -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, infantRequest));
-
     }
 
     @Test
