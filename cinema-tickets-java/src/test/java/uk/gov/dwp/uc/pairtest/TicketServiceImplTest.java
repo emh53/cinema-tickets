@@ -40,7 +40,8 @@ class TicketServiceImplTest {
         TicketTypeRequest request = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 1);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(invalidAccountId, request))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("Invalid account ID %s".formatted(invalidAccountId));
     }
 
     static Stream<Long> invalidAccountIds() {
@@ -53,7 +54,8 @@ class TicketServiceImplTest {
         TicketTypeRequest request = new TicketTypeRequest(type, 0);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("There must be at least 1 adult - Adult=0 Child=0 Infant=0");
     }
 
     @ParameterizedTest
@@ -62,7 +64,8 @@ class TicketServiceImplTest {
         TicketTypeRequest request = new TicketTypeRequest(type, -1);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("Negative ticket number in request - %s=-1".formatted(type));
     }
 
     @ParameterizedTest
@@ -72,7 +75,8 @@ class TicketServiceImplTest {
         TicketTypeRequest negative = new TicketTypeRequest(type, -1);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request, negative))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("Negative ticket number in request - %s=-1".formatted(type));
     }
 
     @Test
@@ -82,7 +86,8 @@ class TicketServiceImplTest {
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 0);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("There must be at least 1 adult - Adult=0 Child=0 Infant=0");
     }
 
     @Test
@@ -91,17 +96,19 @@ class TicketServiceImplTest {
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, childRequest, infantRequest))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("There must be at least 1 adult - Adult=0 Child=1 Infant=1");
     }
 
     @Test
-    void multipleRequestsWithNoAdultTicketsRequested_throwsInvalidPurchaseException() {
+    void multipleRequestsWith0InAdultTicketsRequested_throwsInvalidPurchaseException() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 0);
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 1);
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 1);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("There must be at least 1 adult - Adult=0 Child=1 Infant=1");
     }
 
     @Test
@@ -110,7 +117,8 @@ class TicketServiceImplTest {
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 3);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, infantRequest))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("There must be at least 1 adult per infant - Adult=2 Child=0 Infant=3");
     }
 
     @Test
@@ -122,22 +130,34 @@ class TicketServiceImplTest {
         ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest);
     }
 
+    @ParameterizedTest
+    @EnumSource(TicketTypeRequest.Type.class)
+    void multipleSameTypeRequests_validRequest(TicketTypeRequest.Type type) {
+        TicketTypeRequest requiredAdultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 5);
+        TicketTypeRequest requestOne = new TicketTypeRequest(type, 3);
+        TicketTypeRequest requestTwo = new TicketTypeRequest(type, 2);
+
+        ticketService.purchaseTickets(ACCOUNT_ID, requiredAdultRequest, requestOne, requestTwo);
+    }
+
     @Test
     void moreThat25AdultTicketsRequest_throwsInvalidPurchaseException() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 26);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("The maximum number of tickets is 25 - Adult=26 Child=0 Infant=0");
     }
 
     @Test
     void moreThat25MixedTicketsRequest_throwsInvalidPurchaseException() {
         TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 10);
         TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 10);
-        TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 6);
+        TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 6);
 
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
-                .isInstanceOf(InvalidPurchaseException.class);
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("The maximum number of tickets is 25 - Adult=10 Child=10 Infant=6");
     }
 
     @Test

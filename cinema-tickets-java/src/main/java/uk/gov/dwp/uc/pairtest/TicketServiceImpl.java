@@ -40,13 +40,17 @@ public class TicketServiceImpl implements TicketService {
 
     private void validateAccountId(Long accountId) {
         if (accountId == null || accountId <= 0L) {
-            throw new InvalidPurchaseException();
+            throw new InvalidPurchaseException("Invalid account ID %s".formatted(accountId));
         }
     }
 
     private static TicketCount getTicketCounts(TicketTypeRequest[] ticketTypeRequests) {
         Map<TicketTypeRequest.Type, Integer> totals = new EnumMap<>(TicketTypeRequest.Type.class);
         for (TicketTypeRequest request : ticketTypeRequests) {
+            if (request.noOfTickets() < 0) {
+                throw new InvalidPurchaseException("Negative ticket number in request - %s=%s"
+                                                           .formatted(request.type(), request.noOfTickets()));
+            }
             totals.merge(request.type(), request.noOfTickets(), Integer::sum);
         }
 
@@ -55,12 +59,18 @@ public class TicketServiceImpl implements TicketService {
 
     private void validateTicketsRequested(TicketCount ticketCount) {
         int totalTickets = ticketCount.getAdults() + ticketCount.getChildren() + ticketCount.getInfants();
-        if (ticketCount.getAdults() < 1
-            || ticketCount.getChildren() < 0
-            || ticketCount.getInfants() < 0
-            || totalTickets > MAX_TICKETS
-            || ticketCount.getAdults() < ticketCount.getInfants()) {
-            throw new InvalidPurchaseException();
+        String ticketCountMsg = "Adult=%s Child=%s Infant=%s".formatted(ticketCount.getAdults(), ticketCount.getChildren(), ticketCount.getInfants());
+
+        if (ticketCount.getAdults() < 1) {
+            throw new InvalidPurchaseException("There must be at least 1 adult - %s".formatted(ticketCountMsg));
+        }
+
+        if (totalTickets > MAX_TICKETS) {
+            throw new InvalidPurchaseException("The maximum number of tickets is 25 - %s".formatted(ticketCountMsg));
+        }
+
+        if (ticketCount.getAdults() < ticketCount.getInfants()) {
+            throw new InvalidPurchaseException("There must be at least 1 adult per infant - %s".formatted(ticketCountMsg));
         }
     }
 
