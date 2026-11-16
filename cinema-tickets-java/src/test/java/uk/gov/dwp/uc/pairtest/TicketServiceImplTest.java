@@ -17,6 +17,8 @@ import uk.gov.dwp.uc.pairtest.exception.InvalidPurchaseException;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.verify;
 
@@ -58,6 +60,17 @@ class TicketServiceImplTest {
                 .hasMessage("There must be at least 1 adult - Adult=0 Child=0 Infant=0");
     }
 
+    @Test
+    void multipleRequestsWithNoTicketsRequested_throwsInvalidPurchaseException() {
+        TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 0);
+        TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 0);
+        TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 0);
+
+        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
+                .isInstanceOf(InvalidPurchaseException.class)
+                .hasMessage("There must be at least 1 adult - Adult=0 Child=0 Infant=0");
+    }
+
     @ParameterizedTest
     @EnumSource(TicketTypeRequest.Type.class)
     void negativeTicketsRequested_throwsInvalidPurchaseException(TicketTypeRequest.Type type) {
@@ -77,17 +90,6 @@ class TicketServiceImplTest {
         assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, request, negative))
                 .isInstanceOf(InvalidPurchaseException.class)
                 .hasMessage("Negative ticket number in request - %s=-1".formatted(type));
-    }
-
-    @Test
-    void multipleRequestsWithNoTicketsRequested_throwsInvalidPurchaseException() {
-        TicketTypeRequest adultRequest = new TicketTypeRequest(TicketTypeRequest.Type.ADULT, 0);
-        TicketTypeRequest childRequest = new TicketTypeRequest(TicketTypeRequest.Type.CHILD, 0);
-        TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 0);
-
-        assertThatThrownBy(() -> ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest))
-                .isInstanceOf(InvalidPurchaseException.class)
-                .hasMessage("There must be at least 1 adult - Adult=0 Child=0 Infant=0");
     }
 
     @Test
@@ -128,6 +130,9 @@ class TicketServiceImplTest {
         TicketTypeRequest infantRequest = new TicketTypeRequest(TicketTypeRequest.Type.INFANT, 0);
 
         ticketService.purchaseTickets(ACCOUNT_ID, adultRequest, childRequest, infantRequest);
+
+        verify(seatReservationService, only()).reserveSeat(eq(ACCOUNT_ID), anyInt());
+        verify(ticketPaymentService, only()).makePayment(eq(ACCOUNT_ID), anyInt());
     }
 
     @ParameterizedTest
@@ -138,6 +143,9 @@ class TicketServiceImplTest {
         TicketTypeRequest requestTwo = new TicketTypeRequest(type, 2);
 
         ticketService.purchaseTickets(ACCOUNT_ID, requiredAdultRequest, requestOne, requestTwo);
+
+        verify(seatReservationService, only()).reserveSeat(eq(ACCOUNT_ID), anyInt());
+        verify(ticketPaymentService, only()).makePayment(eq(ACCOUNT_ID), anyInt());
     }
 
     @Test

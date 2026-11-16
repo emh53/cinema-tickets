@@ -44,7 +44,7 @@ public class TicketServiceImpl implements TicketService {
         }
     }
 
-    private static TicketCount getTicketCounts(TicketTypeRequest[] ticketTypeRequests) {
+    private TicketCount getTicketCounts(TicketTypeRequest[] ticketTypeRequests) {
         Map<TicketTypeRequest.Type, Integer> totals = new EnumMap<>(TicketTypeRequest.Type.class);
         for (TicketTypeRequest request : ticketTypeRequests) {
             if (request.noOfTickets() < 0) {
@@ -59,14 +59,16 @@ public class TicketServiceImpl implements TicketService {
 
     private void validateTicketsRequested(TicketCount ticketCount) {
         int totalTickets = ticketCount.getAdults() + ticketCount.getChildren() + ticketCount.getInfants();
-        String ticketCountMsg = "Adult=%s Child=%s Infant=%s".formatted(ticketCount.getAdults(), ticketCount.getChildren(), ticketCount.getInfants());
+        String ticketCountMsg = "Adult=%s Child=%s Infant=%s"
+                                        .formatted(ticketCount.getAdults(), ticketCount.getChildren(), ticketCount.getInfants());
 
         if (ticketCount.getAdults() < 1) {
             throw new InvalidPurchaseException("There must be at least 1 adult - %s".formatted(ticketCountMsg));
         }
 
         if (totalTickets > MAX_TICKETS) {
-            throw new InvalidPurchaseException("The maximum number of tickets is 25 - %s".formatted(ticketCountMsg));
+            throw new InvalidPurchaseException("The maximum number of tickets is %s - %s"
+                                                       .formatted(MAX_TICKETS, ticketCountMsg));
         }
 
         if (ticketCount.getAdults() < ticketCount.getInfants()) {
